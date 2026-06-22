@@ -1,0 +1,112 @@
+<template>
+    <div class="slds-card slds-p-around_x-small">
+        <div class="slds-grid slds-grid_align-end">
+            <lightning-button-icon icon-name="utility:refresh" alternative-text="Rafraîchir"
+                title="Rafraîchir" onclick={refresh}></lightning-button-icon>
+        </div>
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template if:false={hasMonths}>
+                <div class="slds-box slds-box_x-small slds-text-align_center slds-text-color_weak slds-m-top_small">
+                    Aucun mois généré. Valide un mois dans le cockpit pour voir le suivi de facturation.
+                </div>
+            </template>
+
+            <template if:true={hasMonths}>
+                <!-- KPIs (même taille) -->
+                <div class="slds-grid slds-gutters_small slds-m-bottom_small">
+                    <div class="slds-col slds-size_1-of-3">
+                        <div class="slds-box slds-box_xx-small slds-text-align_center slds-theme_shade rsm-kpi">
+                            <div class="slds-text-title_caps slds-text-color_weak">Total régie</div>
+                            <div class="slds-text-heading_medium slds-text-color_default">
+                                <lightning-formatted-number value={overview.totalValide} format-style="currency"
+                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            </div>
+                            <div class="slds-text-body_small slds-text-color_weak">{overview.nbSchedules} mois</div>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-3">
+                        <div class="slds-box slds-box_xx-small slds-text-align_center slds-theme_shade rsm-kpi">
+                            <div class="slds-text-title_caps slds-text-color_weak">À facturer</div>
+                            <div class="slds-text-heading_medium" style="color:#fe9339;">
+                                <lightning-formatted-number value={overview.totalAFacturer} format-style="currency"
+                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            </div>
+                            <div class="slds-text-body_small slds-text-color_weak">{overview.aFacturerLabel}</div>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-3">
+                        <div class="slds-box slds-box_xx-small slds-text-align_center slds-theme_shade rsm-kpi">
+                            <div class="slds-text-title_caps slds-text-color_weak">Facturé</div>
+                            <div class="slds-text-heading_medium" style="color:#2e844a;">
+                                <lightning-formatted-number value={overview.totalFacture} format-style="currency"
+                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            </div>
+                            <div class="slds-text-body_small slds-text-color_weak">{overview.nbFacture} mois</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lignes par mois (repliables) -->
+                <lightning-accordion class="rsm-accordion" allow-multiple-sections-open active-section-name={openSections}
+                    onsectiontoggle={handleToggle}>
+                    <template for:each={months} for:item="m">
+                        <lightning-accordion-section key={m.monthIso} name={m.monthIso} label={m.monthLabel}>
+                            <div slot="actions" class="slds-grid slds-grid_vertical-align-center">
+                                <span class={m.badgeClass}>{m.statusLabel}</span>
+                                <span class="slds-m-left_small slds-text-title_bold slds-text-color_default">
+                                    <lightning-formatted-number value={m.total} format-style="currency"
+                                        currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                                    <span class="slds-text-body_small slds-text-color_weak"> HT</span>
+                                </span>
+                            </div>
+
+                            <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                                <thead>
+                                    <tr class="slds-line-height_reset">
+                                        <th scope="col"><div class="slds-truncate">Produit / Consultant</div></th>
+                                        <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Jours</div></th>
+                                        <th scope="col" class="slds-text-align_right"><div class="slds-truncate">TJM HT</div></th>
+                                        <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Montant HT</div></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template for:each={m.lines} for:item="l">
+                                        <tr key={l.produit}>
+                                            <td>
+                                                <div class="slds-truncate slds-text-title_bold">{l.produit}</div>
+                                                <template if:true={l.consultant}>
+                                                    <div class="slds-truncate slds-text-body_small rsm-consultant">{l.consultant}</div>
+                                                </template>
+                                            </td>
+                                            <td class="slds-text-align_right">{l.jours}</td>
+                                            <td class="slds-text-align_right">
+                                                <lightning-formatted-number value={l.tjm} format-style="currency"
+                                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                                            </td>
+                                            <td class="slds-text-align_right">
+                                                <lightning-formatted-number value={l.total} format-style="currency"
+                                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    <!-- Frais en bas, différenciés -->
+                                    <template for:each={m.fraisLines} for:item="f">
+                                        <tr key={f.produit} class="rsm-frais-row">
+                                            <td><div class="slds-truncate"><lightning-icon icon-name="utility:travel_and_places" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>{f.produit}</div></td>
+                                            <td class="slds-text-align_right slds-text-color_weak">—</td>
+                                            <td class="slds-text-align_right slds-text-color_weak">—</td>
+                                            <td class="slds-text-align_right">
+                                                <lightning-formatted-number value={f.total} format-style="currency"
+                                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </lightning-accordion-section>
+                    </template>
+                </lightning-accordion>
+            </template>
+        </div>
+    </div>
+</template>

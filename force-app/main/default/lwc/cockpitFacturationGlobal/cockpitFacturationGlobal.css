@@ -1,0 +1,16 @@
+.rsm-kpi {
+    min-height: 5.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background-color: #f3f3f3;
+    border-radius: 0.25rem;
+}
+.rsm-kpi-alert {
+    background-color: #fef5e7;
+    border: 1px solid #fdc873;
+    cursor: pointer;
+}
+.rsm-kpi-alert:hover {
+    background-color: #fde8c8;
+}

@@ -1,0 +1,147 @@
+<template>
+    <div class="slds-card slds-p-around_medium slds-is-relative">
+        <template if:true={loading}>
+            <lightning-spinner alternative-text="Traitement en cours" size="medium"></lightning-spinner>
+        </template>
+
+        <!-- En-tête -->
+        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+            <lightning-icon icon-name="standard:billing" size="small" class="slds-m-right_x-small"></lightning-icon>
+            <h1 class="slds-text-heading_medium slds-col">Cockpit de Facturation</h1>
+            <lightning-button-icon icon-name="utility:refresh" alternative-text="Rafraîchir"
+                title="Rafraîchir" onclick={refresh}></lightning-button-icon>
+        </div>
+
+        <!-- Filtres -->
+        <div class="slds-grid slds-gutters_small slds-wrap slds-m-bottom_small">
+            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                <lightning-combobox label="Mois de facturation" value={selectedMonth} options={monthOptions}
+                    onchange={handleMonth} variant="label-stacked"></lightning-combobox>
+            </div>
+            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                <lightning-combobox label="Modèle" value={modelFilter} options={modelOptions}
+                    onchange={handleModel} variant="label-stacked"></lightning-combobox>
+            </div>
+            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                <lightning-combobox label="Client" value={accountFilter} options={accountOptions}
+                    onchange={handleAccount} variant="label-stacked"></lightning-combobox>
+            </div>
+            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                <lightning-combobox label="Statut" value={statutFilter} options={statutOptions}
+                    onchange={handleStatut} variant="label-stacked"></lightning-combobox>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <template if:true={summary}>
+            <div class="slds-grid slds-gutters_small slds-wrap slds-m-bottom_small">
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                    <div class="slds-box slds-box_xx-small slds-text-align_center slds-theme_shade rsm-kpi">
+                        <div class="slds-text-title_caps slds-text-color_weak">À facturer</div>
+                        <div class="slds-text-heading_small" style="color:#fe9339;">
+                            <lightning-formatted-number value={summary.totalAFacturer} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                        </div>
+                        <div class="slds-text-body_small slds-text-color_weak">{summary.monthLabel}</div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                    <div class="slds-box slds-box_xx-small slds-text-align_center rsm-kpi rsm-kpi-alert"
+                        onclick={focusAValider} title="Cliquer pour filtrer">
+                        <div class="slds-text-title_caps slds-text-color_weak">
+                            <lightning-icon icon-name="utility:warning" size="xx-small" variant="warning"
+                                class="slds-m-right_xx-small"></lightning-icon>À valider (Napta)
+                        </div>
+                        <div class="slds-text-heading_small slds-text-color_error">{summary.nbAValiderNapta}</div>
+                        <div class="slds-text-body_small slds-text-color_weak">mission(s) · staffing à valider</div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                    <div class="slds-box slds-box_xx-small slds-text-align_center slds-theme_shade rsm-kpi">
+                        <div class="slds-text-title_caps slds-text-color_weak">Validées</div>
+                        <div class="slds-text-heading_small">{summary.nbValide}</div>
+                        <div class="slds-text-body_small slds-text-color_weak">prêtes à facturer</div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                    <div class="slds-box slds-box_xx-small slds-text-align_center slds-theme_shade rsm-kpi">
+                        <div class="slds-text-title_caps slds-text-color_weak">Facturé</div>
+                        <div class="slds-text-heading_small slds-text-color_success">
+                            <lightning-formatted-number value={summary.totalFacture} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                        </div>
+                        <div class="slds-text-body_small slds-text-color_weak">{summary.nbFacture} mission(s)</div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Filtre rapide : staffing à valider -->
+        <div class="slds-m-bottom_x-small">
+            <lightning-input type="toggle" label="Afficher uniquement les missions avec staffing Napta à valider"
+                checked={onlyAValider} onchange={handleOnlyAValider}
+                message-toggle-active="Oui" message-toggle-inactive="Non"></lightning-input>
+        </div>
+
+        <!-- Liste des missions -->
+        <template if:true={hasMissions}>
+            <lightning-datatable
+                key-field="orderId"
+                data={filteredMissions}
+                columns={columns}
+                onrowaction={handleRowAction}
+                onrowselection={handleRowSelection}
+                hide-checkbox-column="false">
+            </lightning-datatable>
+        </template>
+        <template if:false={hasMissions}>
+            <div class="slds-box slds-box_x-small slds-text-align_center slds-text-color_weak slds-m-top_small">
+                Aucune mission pour ces filtres.
+            </div>
+        </template>
+
+        <!-- Actions de masse -->
+        <div class="slds-m-top_small slds-grid slds-grid_align-end">
+            <lightning-button label="Facturer & Poster la sélection" variant="brand" icon-name="utility:apex"
+                disabled={noSelection} onclick={facturer}></lightning-button>
+        </div>
+    </div>
+
+    <!-- Popup mission (réutilise le cockpit régie) -->
+    <template if:true={showModal}>
+        <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open slds-modal_large">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header slds-grid slds-grid_vertical-align-center">
+                    <div class="slds-col">
+                        <h2 class="slds-modal__title slds-hyphenate">{modalTitle}</h2>
+                        <template if:true={modalIsRegie}>
+                            <p class="slds-m-top_xx-small slds-text-body_small slds-text-color_weak">
+                                Régie · staffing du mois, génération des Billing Schedules et facturation
+                            </p>
+                        </template>
+                        <template if:true={modalIsForfait}>
+                            <p class="slds-m-top_xx-small slds-text-body_small slds-text-color_weak">
+                                Forfait · réalisation des jalons et facturation au jalon
+                            </p>
+                        </template>
+                    </div>
+                    <lightning-button-icon icon-name="utility:close" variant="border-filled"
+                        size="medium" onclick={closeModal} alternative-text="Fermer" title="Fermer">
+                    </lightning-button-icon>
+                </header>
+                <div class="slds-modal__content slds-p-around_small" style="min-height:40vh;">
+                    <template if:true={modalIsRegie}>
+                        <c-regie-billing-cockpit record-id={modalOrderId} show-recap={modalShowRecap}></c-regie-billing-cockpit>
+                    </template>
+                    <template if:true={modalIsForfait}>
+                        <c-milestone-billing-cockpit record-id={modalOrderId}></c-milestone-billing-cockpit>
+                    </template>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Fermer" onclick={closeModal}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

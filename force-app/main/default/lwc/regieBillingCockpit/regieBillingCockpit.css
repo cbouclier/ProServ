@@ -1,0 +1,35 @@
+.rsm-accordion {
+    font-size: 0.85rem;
+    --slds-c-accordion-heading-font-size: 0.85rem;
+    --sds-c-accordion-heading-font-size: 0.85rem;
+}
+
+/* Récap mission */
+.rsm-recap {
+    background-color: #f3f8fe;
+    border: 1px solid #c9e0fb;
+}
+.rsm-recap-ctx {
+    border-top: 1px solid #dbeafe;
+    border-bottom: 1px solid #dbeafe;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+.rsm-recap-reste {
+    background-color: #ffffff;
+    border: 1px solid #c9e0fb;
+    border-radius: 0.25rem;
+}
+.rsm-recap-progress {
+    width: 12rem;
+}
+.rsm-recap-table th,
+.rsm-recap-table td {
+    font-size: 0.85rem;
+    vertical-align: middle;
+}
+
+/* Datatables d'édition : pleine largeur + un peu d'air */
+.rsm-dt {
+    margin-top: 0.25rem;
+}

@@ -1,0 +1,101 @@
+<template>
+    <div class="slds-card slds-p-around_small slds-is-relative">
+        <template if:true={loading}>
+            <lightning-spinner alternative-text="Traitement en cours" size="medium"></lightning-spinner>
+        </template>
+
+        <div class="slds-grid slds-grid_align-end slds-m-bottom_x-small">
+            <lightning-button-icon icon-name="utility:refresh" alternative-text="Rafraîchir"
+                title="Rafraîchir" onclick={refresh}></lightning-button-icon>
+        </div>
+
+        <template if:false={hasJalons}>
+            <div class="slds-box slds-box_x-small slds-text-align_center slds-text-color_weak slds-m-top_small">
+                Aucun plan de jalon sur cette commande. Active une commande Forfait avec un treatment Jalon
+                pour voir les étapes de facturation.
+            </div>
+        </template>
+
+        <template if:true={hasJalons}>
+            <!-- Avancement -->
+            <div class="slds-box slds-m-bottom_medium rsm-recap">
+                <div class="slds-text-title_caps slds-text-color_weak slds-m-bottom_small">Avancement de la facturation</div>
+                <div class="slds-grid slds-grid_vertical-align-center slds-wrap">
+                    <div class="slds-col">
+                        <div class="slds-grid slds-grid_vertical-align-baseline">
+                            <span class="slds-text-heading_large">
+                                <lightning-formatted-number value={overview.totalRealise} format-style="currency"
+                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            </span>
+                            <span class="slds-m-left_small slds-text-body_regular slds-text-color_weak">
+                                réalisé sur <lightning-formatted-number value={overview.total} format-style="currency"
+                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                                &nbsp;&middot;&nbsp; {overview.nbRealises} / {overview.nbJalons} jalons
+                            </span>
+                        </div>
+                    </div>
+                    <div class="rsm-bar slds-text-align_right">
+                        <lightning-progress-bar value={overview.avancement} size="large"></lightning-progress-bar>
+                        <div class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">{overview.avancement}% réalisé</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plan de jalons -->
+            <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                <thead>
+                    <tr class="slds-line-height_reset">
+                        <th scope="col"><div class="slds-truncate">Étape</div></th>
+                        <th scope="col" class="slds-text-align_right"><div class="slds-truncate">%</div></th>
+                        <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Montant HT</div></th>
+                        <th scope="col"><div class="slds-truncate">Statut</div></th>
+                        <th scope="col" class="slds-text-align_right" style="width:13rem"><div class="slds-truncate">Action</div></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template for:each={jalons} for:item="j">
+                        <tr key={j.name}>
+                            <td>
+                                <div class="slds-truncate slds-text-title_bold">{j.name}</div>
+                                <template if:true={j.accomplishmentDate}>
+                                    <div class="slds-text-body_small slds-text-color_weak">
+                                        Réalisé le <lightning-formatted-date-time value={j.accomplishmentDate}
+                                            year="numeric" month="short" day="2-digit"></lightning-formatted-date-time>
+                                    </div>
+                                </template>
+                            </td>
+                            <td class="slds-text-align_right">{j.percentage}%</td>
+                            <td class="slds-text-align_right slds-text-title_bold">
+                                <lightning-formatted-number value={j.montant} format-style="currency"
+                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            </td>
+                            <td><span class={j.badgeClass}>{j.statut}</span></td>
+                            <td class="slds-text-align_right">
+                                <template if:true={j.canAccomplish}>
+                                    <lightning-button variant="brand" label="Réaliser le jalon"
+                                        icon-name="utility:check" data-name={j.name}
+                                        onclick={handleAccomplish}></lightning-button>
+                                </template>
+                                <template if:true={j.canInvoice}>
+                                    <lightning-button variant="success" label="Facturer le jalon"
+                                        icon-name="utility:apex" data-name={j.name}
+                                        onclick={handleInvoice}></lightning-button>
+                                </template>
+                                <template if:true={j.locked}>
+                                    <span class="slds-text-body_small slds-text-color_weak" title={j.lockReason}>
+                                        <lightning-icon icon-name="utility:lock" size="xx-small"
+                                            class="slds-m-right_xx-small"></lightning-icon>Bloqué
+                                    </span>
+                                </template>
+                                <template if:true={j.invoiced}>
+                                    <lightning-icon icon-name="utility:success" size="x-small" variant="success"
+                                        alternative-text="Facturé" title="Facturé"></lightning-icon>
+                                </template>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </template>
+    </div>
+</template>

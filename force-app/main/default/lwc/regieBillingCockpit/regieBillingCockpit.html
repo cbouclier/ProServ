@@ -1,0 +1,173 @@
+<template>
+    <div class="slds-card slds-p-around_x-small">
+        <div class="slds-grid slds-grid_align-end">
+            <lightning-button-icon
+                icon-name="utility:refresh"
+                alternative-text="Rafraîchir"
+                title="Rafraîchir"
+                onclick={load}>
+            </lightning-button-icon>
+        </div>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium slds-is-relative">
+            <template if:true={loading}>
+                <lightning-spinner alternative-text="Traitement en cours" size="medium"></lightning-spinner>
+            </template>
+
+            <!-- Récap mission : contexte order + reste à facturer (modale uniquement) -->
+            <template if:true={displayRecap}>
+                <div class="slds-box slds-m-bottom_medium rsm-recap">
+                    <!-- Titre + client -->
+                    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+                        <lightning-icon icon-name="standard:account" size="small" class="slds-m-right_x-small"></lightning-icon>
+                        <span class="slds-text-heading_small slds-truncate">{recap.account}</span>
+                    </div>
+
+                    <!-- Faits clés de la commande -->
+                    <div class="slds-grid slds-gutters_small slds-wrap slds-m-bottom_medium rsm-recap-ctx">
+                        <div class="slds-col">
+                            <div class="slds-text-title_caps slds-text-color_weak">Commande</div>
+                            <div class="slds-text-body_regular">N° {recap.orderNumber}</div>
+                        </div>
+                        <template if:true={recap.dateDebut}>
+                            <div class="slds-col">
+                                <div class="slds-text-title_caps slds-text-color_weak">Début mission</div>
+                                <div class="slds-text-body_regular">
+                                    <lightning-formatted-date-time value={recap.dateDebut} year="numeric" month="long" day="2-digit"></lightning-formatted-date-time>
+                                </div>
+                            </div>
+                        </template>
+                        <template if:true={recap.dateFin}>
+                            <div class="slds-col">
+                                <div class="slds-text-title_caps slds-text-color_weak">Fin mission</div>
+                                <div class="slds-text-body_regular">
+                                    <lightning-formatted-date-time value={recap.dateFin} year="numeric" month="long" day="2-digit"></lightning-formatted-date-time>
+                                </div>
+                            </div>
+                        </template>
+                        <div class="slds-col">
+                            <div class="slds-text-title_caps slds-text-color_weak">Montant contrat</div>
+                            <div class="slds-text-body_regular">
+                                <lightning-formatted-number value={recap.totalMontantVendu}
+                                    format-style="currency" currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reste à facturer (mis en avant) -->
+                    <div class="slds-grid slds-grid_vertical-align-center slds-wrap rsm-recap-reste slds-p-around_x-small slds-m-bottom_small">
+                        <div class="slds-col">
+                            <div class="slds-text-title_caps slds-text-color_weak">Reste à facturer</div>
+                            <div class="slds-grid slds-grid_vertical-align-baseline">
+                                <span class="slds-text-heading_medium slds-text-color_default">
+                                    <lightning-formatted-number value={recap.totalMontantRestant}
+                                        format-style="currency" currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                                </span>
+                                <span class="slds-m-left_x-small slds-text-body_small slds-text-color_weak">
+                                    HT &middot; {recap.totalJoursRestants} / {recap.totalJoursVendus} jours
+                                </span>
+                            </div>
+                        </div>
+                        <div class="rsm-recap-progress slds-text-align_right">
+                            <lightning-progress-bar value={recap.avancement} size="medium"></lightning-progress-bar>
+                            <div class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">{recap.avancement}% facturé</div>
+                        </div>
+                    </div>
+
+                    <!-- Détail par grade -->
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered rsm-recap-table">
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <th scope="col"><div class="slds-truncate">Produit</div></th>
+                                <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Vendu (j)</div></th>
+                                <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Facturé (j)</div></th>
+                                <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Restant (j)</div></th>
+                                <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Reste à facturer</div></th>
+                                <th scope="col" style="width:8rem"><div class="slds-truncate">Avancement</div></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={recap.lines} for:item="rl">
+                                <tr key={rl.produit}>
+                                    <td><div class="slds-truncate slds-text-title_bold">{rl.produit}</div></td>
+                                    <td class="slds-text-align_right">{rl.joursVendus}</td>
+                                    <td class="slds-text-align_right slds-text-color_weak">{rl.joursFactures}</td>
+                                    <td class="slds-text-align_right slds-text-title_bold">{rl.joursRestants}</td>
+                                    <td class="slds-text-align_right">
+                                        <lightning-formatted-number value={rl.montantRestant}
+                                            format-style="currency" currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                                    </td>
+                                    <td><lightning-progress-bar value={rl.avancement} size="small"></lightning-progress-bar></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+
+            <template if:false={hasMonths}>
+                <div class="slds-box slds-box_x-small slds-text-align_center slds-text-color_weak slds-m-top_small">
+                    Aucun plan de facturation régie. Clique sur le bouton
+                    <b>&laquo;&nbsp;Import Napta&nbsp;&raquo;</b> de la commande pour générer les lignes du mois.
+                </div>
+            </template>
+
+            <template if:true={hasMonths}>
+                <lightning-accordion class="rsm-accordion" allow-multiple-sections-open active-section-name={openSections} onsectiontoggle={handleToggle}>
+                    <template for:each={months} for:item="m">
+                        <lightning-accordion-section key={m.monthIso} name={m.monthIso} label={m.monthLabel}>
+                            <div slot="actions" class="slds-grid slds-grid_vertical-align-center">
+                                <span class={m.badgePill}>{m.status}</span>
+                                <span class="slds-m-left_small slds-text-title_bold slds-text-color_default">
+                                    <lightning-formatted-number
+                                        value={m.recomputedTotal}
+                                        format-style="currency"
+                                        currency-code="EUR"
+                                        maximum-fraction-digits="0">
+                                    </lightning-formatted-number>
+                                    <span class="slds-text-body_small slds-text-color_weak"> HT / mois</span>
+                                </span>
+                            </div>
+
+                            <lightning-datatable
+                                key-field="id"
+                                data={m.lines}
+                                columns={m.gradeColumns}
+                                onsave={handleSave}
+                                data-month={m.monthIso}
+                                hide-checkbox-column
+                                class="rsm-dt">
+                            </lightning-datatable>
+
+                            <template if:true={m.hasFrais}>
+                                <div class="slds-text-title_caps slds-text-color_weak slds-m-top_small slds-m-bottom_xx-small">Frais de déplacement</div>
+                                <lightning-datatable
+                                    key-field="id"
+                                    data={m.fraisLines}
+                                    columns={m.fraisColumns}
+                                    onsave={handleSave}
+                                    data-month={m.monthIso}
+                                    hide-checkbox-column
+                                    class="rsm-dt">
+                                </lightning-datatable>
+                            </template>
+
+                            <div class="slds-grid slds-grid_align-end slds-m-top_medium">
+                                <lightning-button variant="brand" label="Valider ou Soumettre la préfacturation"
+                                    icon-name="utility:apps" data-month={m.monthIso}
+                                    onclick={handleValidate} disabled={m.isBilled}>
+                                </lightning-button>
+                                <template if:true={m.canInvoice}>
+                                    <lightning-button variant="success" label="🧾 Facturer &amp; poster"
+                                        data-month={m.monthIso}
+                                        onclick={handleInvoice} class="slds-m-left_x-small">
+                                    </lightning-button>
+                                </template>
+                            </div>
+                        </lightning-accordion-section>
+                    </template>
+                </lightning-accordion>
+            </template>
+        </div>
+    </div>
+</template>

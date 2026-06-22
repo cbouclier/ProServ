@@ -1,0 +1,180 @@
+<template>
+    <div class="rsm-tower slds-is-relative">
+        <template if:true={loading}>
+            <lightning-spinner alternative-text="Traitement en cours" size="small"></lightning-spinner>
+        </template>
+
+        <template if:true={p}>
+            <!-- ===== En-tête ===== -->
+            <div class="rsm-head">
+                <div class="rsm-head-info">
+                    <div class="rsm-eyebrow">Pilotage de l'affaire</div>
+                    <div class="rsm-title">
+                        {p.orderName}
+                        <span class="rsm-chip">{p.modelLabel}</span>
+                        <span class="rsm-chip rsm-chip_ghost">{p.statut}</span>
+                    </div>
+                    <div class="rsm-sub">N° {p.orderNumber} &middot; {p.account}</div>
+                </div>
+                <lightning-button-icon icon-name="utility:refresh" variant="border-filled" size="small"
+                    alternative-text="Rafraîchir" title="Rafraîchir" onclick={refresh}></lightning-button-icon>
+            </div>
+
+            <!-- ===== Carte focale ===== -->
+            <div class="rsm-focal">
+                <!-- Donut avancement -->
+                <div class="rsm-focal-gauge">
+                    <div class="rsm-donut rsm-donut-lg" style={gaugeAvancement}>
+                        <div class="rsm-donut-center">
+                            <div class="rsm-donut-val">{avancement}<span class="rsm-donut-unit">%</span></div>
+                            <div class="rsm-donut-cap">avancement</div>
+                        </div>
+                    </div>
+                    <div class="rsm-gauge-sub">{p.tauxConsommation}% du budget jours consommé</div>
+                </div>
+
+                <!-- Flux financiers -->
+                <div class="rsm-focal-flux">
+                    <div class="rsm-flux-row">
+                        <span class="rsm-flux-dot rsm-dot-vendu"></span>
+                        <span class="rsm-flux-name">Vendu</span>
+                        <span class="rsm-flux-amt">
+                            <lightning-formatted-number value={p.caVendu} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number></span>
+                        <span class="rsm-flux-days">{p.joursVendus} j</span>
+                        <span class="rsm-flux-bar"><span class="rsm-fill rsm-fill-vendu" style="width:100%"></span></span>
+                    </div>
+                    <div class="rsm-flux-row">
+                        <span class="rsm-flux-dot rsm-dot-realise"></span>
+                        <span class="rsm-flux-name">Réalisé</span>
+                        <span class="rsm-flux-amt">
+                            <lightning-formatted-number value={p.produitRealise} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number></span>
+                        <span class="rsm-flux-days">{p.joursRealises} j</span>
+                        <span class="rsm-flux-bar"><span class="rsm-fill rsm-fill-realise" style={barRealiseStyle}></span></span>
+                    </div>
+                    <div class="rsm-flux-row">
+                        <span class="rsm-flux-dot rsm-dot-facture"></span>
+                        <span class="rsm-flux-name">Facturé</span>
+                        <span class="rsm-flux-amt">
+                            <lightning-formatted-number value={p.facture} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number></span>
+                        <span class="rsm-flux-days">{p.joursFactures} j</span>
+                        <span class="rsm-flux-bar"><span class="rsm-fill rsm-fill-facture" style={barFactureStyle}></span></span>
+                    </div>
+                    <div class="rsm-flux-ecarts">
+                        <span>Reste à produire <b>
+                            <lightning-formatted-number value={p.resteAProduire} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number></b></span>
+                        <span>Reste à facturer <b>
+                            <lightning-formatted-number value={p.resteAFacturer} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number></b></span>
+                        <span>Reste à consommer <b>{p.resteAConsommer} j</b></span>
+                    </div>
+                </div>
+
+                <!-- Rentabilité -->
+                <div class={rentabColorClass}>
+                    <div class="rsm-fr">
+                        <div class="rsm-fr-lbl">Rentabilité à date</div>
+                        <div class="rsm-fr-tag">{boniMaliLabel}</div>
+                        <div class="rsm-fr-amt">
+                            <lightning-formatted-number value={boniMaliSignedAbs} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                        </div>
+                        <div class="rsm-fr-pct">{boniMaliPctLabel} vs marge attendue</div>
+                        <div class="rsm-fr-sub">
+                            Marge réelle
+                            <lightning-formatted-number value={p.margeReelle} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            · attendue
+                            <lightning-formatted-number value={p.margeAttendue} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== KPIs à pastilles ===== -->
+            <div class="slds-grid slds-gutters_x-small slds-wrap rsm-kpis">
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                    <div class="rsm-kpi">
+                        <div class="rsm-kpi-badge rsm-bg-green"><lightning-icon icon-name="utility:apex"
+                            size="x-small" variant="inverse"></lightning-icon></div>
+                        <div class="rsm-kpi-val">{p.tauxFacturation}%</div>
+                        <div class="rsm-kpi-lbl">Taux de facturation</div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                    <div class="rsm-kpi">
+                        <div class="rsm-kpi-badge rsm-bg-purple"><lightning-icon icon-name="utility:percent"
+                            size="x-small" variant="inverse"></lightning-icon></div>
+                        <div class="rsm-kpi-val">{p.tauxMargeReelle}%</div>
+                        <div class="rsm-kpi-lbl">Marge réelle <span class="rsm-kpi-hint">(vendue {p.tauxMargeVendue}%)</span></div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                    <div class="rsm-kpi">
+                        <div class="rsm-kpi-badge rsm-bg-slate"><lightning-icon icon-name="utility:moneybag"
+                            size="x-small" variant="inverse"></lightning-icon></div>
+                        <div class="rsm-kpi-val">
+                            <lightning-formatted-number value={p.tjmVendu} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number></div>
+                        <div class="rsm-kpi-lbl">TJM moyen vendu /j</div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                    <div class="rsm-kpi">
+                        <div class="rsm-kpi-badge rsm-bg-blue"><lightning-icon icon-name="utility:currency"
+                            size="x-small" variant="inverse"></lightning-icon></div>
+                        <div class="rsm-kpi-val">
+                            <lightning-formatted-number value={p.tjmRealise} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number></div>
+                        <div class="rsm-kpi-lbl">TJM moyen réalisé /j</div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                    <div class="rsm-kpi">
+                        <div class="rsm-kpi-badge rsm-bg-amber"><lightning-icon icon-name="utility:cost"
+                            size="x-small" variant="inverse"></lightning-icon></div>
+                        <div class="rsm-kpi-val">
+                            <lightning-formatted-number value={p.coutJourReel} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number></div>
+                        <div class="rsm-kpi-lbl">Coût moyen réel /j</div>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                    <div class="rsm-kpi">
+                        <div class="rsm-kpi-badge rsm-bg-teal"><lightning-icon icon-name="utility:travel_and_places"
+                            size="x-small" variant="inverse"></lightning-icon></div>
+                        <div class="rsm-kpi-val">
+                            <lightning-formatted-number value={p.fraisReels} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number></div>
+                        <div class="rsm-kpi-lbl">Frais réels (total)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== FAE ===== -->
+            <div class="rsm-fae">
+                <div class="rsm-kpi-badge rsm-bg-amber rsm-fae-ic"><lightning-icon icon-name="utility:page"
+                    size="x-small" variant="inverse"></lightning-icon></div>
+                <div class="rsm-fae-body">
+                    <div class="rsm-fae-eyebrow">Factures à établir</div>
+                    <span class="rsm-fae-amount">
+                        <lightning-formatted-number value={p.fae} format-style="currency"
+                            currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number></span>
+                    <span class="rsm-fae-note">réalisé non encore facturé</span>
+                    <template if:true={faeMaterialisee}>
+                        <span class="rsm-fae-draft">·
+                            <lightning-formatted-number value={p.faeDraft} format-style="currency"
+                                currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            en Draft</span>
+                    </template>
+                </div>
+                <lightning-button label="Générer (Draft)" variant="brand" size="small"
+                    onclick={handleGenererFae} disabled={loading}></lightning-button>
+            </div>
+        </template>
+    </div>
+</template>

@@ -1,0 +1,21 @@
+.rsm-accordion {
+    font-size: 0.8rem;
+    --slds-c-accordion-heading-font-size: 0.8rem;
+    --sds-c-accordion-heading-font-size: 0.8rem;
+}
+.rsm-kpi {
+    min-height: 5.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.rsm-consultant {
+    color: #1b96ff;
+    font-style: italic;
+    font-size: 0.75rem;
+    line-height: 1.1;
+}
+.rsm-frais-row {
+    background-color: #fef9f2;
+    font-style: italic;
+}
