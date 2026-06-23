@@ -310,6 +310,8 @@ Pour que les composants fonctionnent sur une nouvelle org, celle-ci doit dispose
 
 Un script de déploiement est disponible à la racine du projet. Il déploie tous les composants en 4 étapes ordonnées (objets → Apex → LWC → pages).
 
+**La validation est toujours exécutée avant chaque déploiement réel.** Si une étape ne passe pas la validation, le script s'arrête immédiatement et le déploiement est annulé. Aucune modification n'est appliquée à l'org en cas d'échec.
+
 ```bash
 cd /Users/cbouclier/VSCode/ProServ && ./deploy.sh <alias-org>
 ```
@@ -319,6 +321,11 @@ Exemple :
 ./deploy.sh my-sandbox
 ./deploy.sh user@company.com
 ```
+
+Pour chaque étape, le script :
+1. Lance une validation (`sf project deploy validate`) — vérifie la compatibilité sans toucher à l'org
+2. Si la validation réussit → lance le déploiement réel (`sf project deploy start`)
+3. Si la validation échoue → affiche l'erreur et arrête tout
 
 Voir [deploy.sh](deploy.sh) pour le détail des étapes et les vérifications post-déploiement.
 

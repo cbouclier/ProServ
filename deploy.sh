@@ -2,14 +2,16 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # deploy.sh — ProServ RSM
 #
-# Déploie tous les composants ProServ sur une org Salesforce cible.
+# Valide puis déploie tous les composants ProServ sur une org Salesforce cible.
+# La validation est TOUJOURS exécutée avant le déploiement réel.
+# Si la validation échoue, le déploiement est annulé.
 #
 # Ce que le script déploie :
 #   - Objets custom (RegieBillingPlan__c, RSM_PaieBillingPlan__c, RSM_RankCost__c)
 #   - Champ custom Order.RSM_BillingModel__c
 #   - 52 composants LWC
 #   - Classes Apex
-#   - FlexiPages (Cockpit_Facturation_Global, Usage_Order_Record_Page, RLM_Home_Page_Default)
+#   - FlexiPages (Cockpit_Facturation_Global, Usage_Order_Record_Page)
 #   - Quick Action Order.Import_Silae
 #   - Flow RSM_Import_Silae
 #   - Static Resource rsmCockpitStyles
@@ -42,39 +44,54 @@ fi
 
 echo ""
 echo "════════════════════════════════════════════════════════"
-echo "  ProServ RSM — Déploiement"
+echo "  ProServ RSM — Validation + Déploiement"
 echo "  Org cible : $TARGET_ORG"
 echo "════════════════════════════════════════════════════════"
 echo ""
 
-# ── Répertoire du script ──────────────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# ── Helper : valider puis déployer ────────────────────────────────────────────
+# Prend exactement les mêmes arguments que sf project deploy start.
+# Exécute d'abord une validation (--dry-run), puis le déploiement réel.
+deploy_with_validation() {
+    local label="$1"
+    shift  # retire le label, le reste = arguments metadata
+
+    echo "  🔍 Validation : $label..."
+    if ! sf project deploy validate "$@" --target-org "$TARGET_ORG"; then
+        echo ""
+        echo "  ❌ Validation échouée pour : $label"
+        echo "     Déploiement annulé. Corrigez les erreurs avant de relancer."
+        exit 1
+    fi
+    echo "  ✅ Validation réussie."
+
+    echo "  🚀 Déploiement : $label..."
+    sf project deploy start "$@" --target-org "$TARGET_ORG"
+    echo "  ✅ Déployé."
+    echo ""
+}
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ÉTAPE 1 — Objets et champs custom
 # ══════════════════════════════════════════════════════════════════════════════
 echo "──────────────────────────────────────────────────────────"
-echo "  Étape 1/4 — Objets et champs custom..."
+echo "  Étape 1/4 — Objets et champs custom"
 echo "──────────────────────────────────────────────────────────"
 
-sf project deploy start \
+deploy_with_validation "Objets et champs custom" \
     --metadata "CustomObject:RegieBillingPlan__c" \
     --metadata "CustomObject:RSM_PaieBillingPlan__c" \
     --metadata "CustomObject:RSM_RankCost__c" \
-    --metadata "CustomField:Order.RSM_BillingModel__c" \
-    --target-org "$TARGET_ORG"
-
-echo "  ✅ Objets et champs déployés."
-echo ""
+    --metadata "CustomField:Order.RSM_BillingModel__c"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ÉTAPE 2 — Code Apex et ressources
 # ══════════════════════════════════════════════════════════════════════════════
 echo "──────────────────────────────────────────────────────────"
-echo "  Étape 2/4 — Classes Apex et Static Resources..."
+echo "  Étape 2/4 — Classes Apex et Static Resources"
 echo "──────────────────────────────────────────────────────────"
 
-sf project deploy start \
+deploy_with_validation "Classes Apex et Static Resources" \
     --metadata "ApexClass:RegieBillingController" \
     --metadata "ApexClass:RegieBillingControllerTest" \
     --metadata "ApexClass:MilestoneBillingController" \
@@ -83,20 +100,16 @@ sf project deploy start \
     --metadata "ApexClass:GlobalBillingController" \
     --metadata "ApexClass:GlobalBillingControllerTest" \
     --metadata "ApexClass:AffaireControlTowerController" \
-    --metadata "StaticResource:rsmCockpitStyles" \
-    --target-org "$TARGET_ORG"
-
-echo "  ✅ Apex et ressources déployés."
-echo ""
+    --metadata "StaticResource:rsmCockpitStyles"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ÉTAPE 3 — Composants LWC, Flow et Quick Action
 # ══════════════════════════════════════════════════════════════════════════════
 echo "──────────────────────────────────────────────────────────"
-echo "  Étape 3/4 — LWC, Flow et Quick Action..."
+echo "  Étape 3/4 — LWC, Flow et Quick Action"
 echo "──────────────────────────────────────────────────────────"
 
-sf project deploy start \
+deploy_with_validation "LWC, Flow et Quick Action" \
     --metadata "LightningComponentBundle:affaireControlTower" \
     --metadata "LightningComponentBundle:cockpitFacturationGlobal" \
     --metadata "LightningComponentBundle:milestoneBillingCockpit" \
@@ -109,26 +122,18 @@ sf project deploy start \
     --metadata "LightningComponentBundle:paieBillingStatus" \
     --metadata "LightningComponentBundle:paieImportSilaeAction" \
     --metadata "Flow:RSM_Import_Silae" \
-    --metadata "QuickAction:Order.Import_Silae" \
-    --target-org "$TARGET_ORG"
-
-echo "  ✅ LWC, Flow et Quick Action déployés."
-echo ""
+    --metadata "QuickAction:Order.Import_Silae"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ÉTAPE 4 — Lightning Pages
 # ══════════════════════════════════════════════════════════════════════════════
 echo "──────────────────────────────────────────────────────────"
-echo "  Étape 4/4 — Lightning Pages..."
+echo "  Étape 4/4 — Lightning Pages"
 echo "──────────────────────────────────────────────────────────"
 
-sf project deploy start \
+deploy_with_validation "Lightning Pages" \
     --metadata "FlexiPage:Cockpit_Facturation_Global" \
-    --metadata "FlexiPage:Usage_Order_Record_Page" \
-    --target-org "$TARGET_ORG"
-
-echo "  ✅ Lightning Pages déployées."
-echo ""
+    --metadata "FlexiPage:Usage_Order_Record_Page"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # RÉSUMÉ
