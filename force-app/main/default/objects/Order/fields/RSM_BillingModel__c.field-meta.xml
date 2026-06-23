@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RSM_BillingModel__c</fullName>
+    <label>Mode de facturation</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Régie</fullName>
+                <default>false</default>
+                <label>Régie</label>
+            </value>
+            <value>
+                <fullName>Forfait</fullName>
+                <default>false</default>
+                <label>Forfait</label>
+            </value>
+            <value>
+                <fullName>Usage</fullName>
+                <default>false</default>
+                <label>Usage</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

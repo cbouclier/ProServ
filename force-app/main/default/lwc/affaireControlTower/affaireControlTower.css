@@ -93,6 +93,13 @@
 .rsm-fr-amt { font-size: 2.05rem; font-weight: 800; line-height: 1.05; }
 .rsm-fr-pct { font-size: 0.85rem; font-weight: 700; margin-top: 0.1rem; }
 .rsm-fr-sub { font-size: 0.72rem; color: #8a94a6; margin-top: 0.5rem; line-height: 1.4; }
+.rsm-fr-hint { font-size: 0.72rem; color: #8a94a6; margin: 0.2rem 0 0.5rem; line-height: 1.4; }
+.rsm-fr-input { margin-bottom: 0.5rem; }
+.rsm-fr-edit {
+    display: inline-flex; align-items: center; margin-top: 0.55rem;
+    font-size: 0.72rem; font-weight: 600; color: #1b96ff; cursor: pointer;
+}
+.rsm-fr-edit:hover { text-decoration: underline; }
 .rsm-c-boni   .rsm-fr-tag, .rsm-c-boni .rsm-fr-amt, .rsm-c-boni .rsm-fr-pct { color: #1a7a3e; }
 .rsm-c-mali   .rsm-fr-tag, .rsm-c-mali .rsm-fr-amt, .rsm-c-mali .rsm-fr-pct { color: #ba0517; }
 .rsm-c-neutre .rsm-fr-tag, .rsm-c-neutre .rsm-fr-amt { color: #16325c; }

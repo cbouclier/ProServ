@@ -6,6 +6,8 @@ import getMissions from '@salesforce/apex/GlobalBillingController.getMissions';
 import facturerSelection from '@salesforce/apex/GlobalBillingController.facturerSelection';
 import invoiceMilestone from '@salesforce/apex/MilestoneBillingController.invoiceMilestone';
 import linkMilestoneInvoices from '@salesforce/apex/MilestoneBillingController.linkInvoices';
+import invoicePaieOrder from '@salesforce/apex/PaieBillingController.invoiceOrder';
+import linkPaieInvoices from '@salesforce/apex/PaieBillingController.linkInvoicesToOrder';
 
 const FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
@@ -53,6 +55,7 @@ export default class CockpitFacturationGlobal extends LightningElement {
 
     get modalIsRegie() { return this.modalModel === 'Regie'; }
     get modalIsForfait() { return this.modalModel === 'Forfait'; }
+    get modalIsUsage() { return this.modalModel === 'Usage'; }
 
     connectedCallback() {
         const now = new Date();
@@ -152,7 +155,7 @@ export default class CockpitFacturationGlobal extends LightningElement {
         if (name === 'open') {
             this.modalOrderId = row.orderId;
             this.modalTitle = row.orderName;
-            this.modalModel = row.model === 'Forfait' ? 'Forfait' : 'Regie';
+            this.modalModel = row.model; // 'Regie' | 'Forfait' | 'Usage'
             this.showModal = true;
         } else if (name === 'invoice') {
             this.invoiceOne(row);
@@ -161,6 +164,7 @@ export default class CockpitFacturationGlobal extends LightningElement {
 
     async invoiceOne(row) {
         const isForfait = row.model === 'Forfait';
+        const isUsage = row.model === 'Usage';
         const ok = await LightningConfirm.open({
             label: 'Facturer & Poster',
             theme: 'warning',
@@ -175,6 +179,9 @@ export default class CockpitFacturationGlobal extends LightningElement {
             if (isForfait) {
                 msg = await invoiceMilestone({ orderId: row.orderId });
                 await this.pollMilestoneLink(row.orderId);
+            } else if (isUsage) {
+                msg = await invoicePaieOrder({ orderId: row.orderId });
+                await this.pollPaieLink(row.orderId);
             } else {
                 msg = await facturerSelection({ orderIds: [row.orderId] });
             }
@@ -184,6 +191,16 @@ export default class CockpitFacturationGlobal extends LightningElement {
             this.toast('Erreur', err.body ? err.body.message : err.message, 'error');
         } finally {
             this.loading = false;
+        }
+    }
+
+    async pollPaieLink(orderId) {
+        for (let i = 0; i < 5; i++) {
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((r) => setTimeout(r, 2500));
+            // eslint-disable-next-line no-await-in-loop
+            const n = await linkPaieInvoices({ orderId });
+            if (n > 0) return;
         }
     }
 

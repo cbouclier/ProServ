@@ -11,7 +11,7 @@
         <targetConfig targets="lightning__RecordPage">
             <property name="showRecap" type="Boolean" default="false"
                 label="Afficher le récap mission (reste à facturer)"
-                description="Affiche en haut le contexte de la commande et le reste à facturer. Inutile sur la page Order (infos déjà présentes), utile dans le cockpit global."/>
+                description="Affiche en haut le contexte de la mission et le reste à facturer. Inutile sur la page Mission (infos déjà présentes), utile dans le cockpit global."/>
             <objects>
                 <object>Order</object>
             </objects>

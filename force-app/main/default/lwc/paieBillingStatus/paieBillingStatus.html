@@ -1,0 +1,79 @@
+<template>
+    <div class="slds-card slds-p-around_x-small">
+        <div class="slds-grid slds-grid_align-end">
+            <lightning-button-icon icon-name="utility:refresh" alternative-text="Rafraîchir"
+                title="Rafraîchir" onclick={refresh}></lightning-button-icon>
+        </div>
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template if:false={hasMonths}>
+                <div class="slds-box slds-box_x-small slds-text-align_center slds-text-color_weak slds-m-top_small">
+                    Aucun mois validé. Valide un mois dans le cockpit pour voir le suivi de facturation Paie.
+                </div>
+            </template>
+
+            <template if:true={hasMonths}>
+                <div class="slds-grid slds-gutters_small slds-m-bottom_small">
+                    <div class="slds-col slds-size_1-of-3">
+                        <div class="slds-box slds-box_xx-small slds-text-align_center slds-theme_shade">
+                            <div class="slds-text-title_caps slds-text-color_weak">Total Paie</div>
+                            <div class="slds-text-heading_medium">
+                                <lightning-formatted-number value={overview.totalValide} format-style="currency"
+                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            </div>
+                            <div class="slds-text-body_small slds-text-color_weak">{overview.nbMois} mois</div>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-3">
+                        <div class="slds-box slds-box_xx-small slds-text-align_center slds-theme_shade">
+                            <div class="slds-text-title_caps slds-text-color_weak">À facturer</div>
+                            <div class="slds-text-heading_medium" style="color:#fe9339;">
+                                <lightning-formatted-number value={overview.totalAFacturer} format-style="currency"
+                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            </div>
+                            <div class="slds-text-body_small slds-text-color_weak">{overview.aFacturerLabel}</div>
+                        </div>
+                    </div>
+                    <div class="slds-col slds-size_1-of-3">
+                        <div class="slds-box slds-box_xx-small slds-text-align_center slds-theme_shade">
+                            <div class="slds-text-title_caps slds-text-color_weak">Facturé</div>
+                            <div class="slds-text-heading_medium" style="color:#2e844a;">
+                                <lightning-formatted-number value={overview.totalFacture} format-style="currency"
+                                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                            </div>
+                            <div class="slds-text-body_small slds-text-color_weak">{overview.nbFacture} mois</div>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                    <thead>
+                        <tr class="slds-line-height_reset">
+                            <th scope="col"><div class="slds-truncate">Mois</div></th>
+                            <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Bulletins</div></th>
+                            <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Prix unit.</div></th>
+                            <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Montant HT</div></th>
+                            <th scope="col"><div class="slds-truncate">Statut</div></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template for:each={months} for:item="m">
+                            <tr key={m.monthIso}>
+                                <td><div class="slds-truncate slds-text-title_bold">{m.monthLabel}</div></td>
+                                <td class="slds-text-align_right">{m.nbBulletins}</td>
+                                <td class="slds-text-align_right">
+                                    <lightning-formatted-number value={m.prixUnitaire} format-style="currency"
+                                        currency-code="EUR"></lightning-formatted-number>
+                                </td>
+                                <td class="slds-text-align_right slds-text-title_bold">
+                                    <lightning-formatted-number value={m.total} format-style="currency"
+                                        currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                                </td>
+                                <td><span class={m.badgeClass}>{m.statusLabel}</span></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </template>
+        </div>
+    </div>
+</template>

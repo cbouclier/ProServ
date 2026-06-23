@@ -23,10 +23,10 @@
                         <span class="slds-text-heading_small slds-truncate">{recap.account}</span>
                     </div>
 
-                    <!-- Faits clés de la commande -->
+                    <!-- Faits clés de la mission -->
                     <div class="slds-grid slds-gutters_small slds-wrap slds-m-bottom_medium rsm-recap-ctx">
                         <div class="slds-col">
-                            <div class="slds-text-title_caps slds-text-color_weak">Commande</div>
+                            <div class="slds-text-title_caps slds-text-color_weak">Mission</div>
                             <div class="slds-text-body_regular">N° {recap.orderNumber}</div>
                         </div>
                         <template if:true={recap.dateDebut}>
@@ -108,7 +108,7 @@
             <template if:false={hasMonths}>
                 <div class="slds-box slds-box_x-small slds-text-align_center slds-text-color_weak slds-m-top_small">
                     Aucun plan de facturation régie. Clique sur le bouton
-                    <b>&laquo;&nbsp;Import Napta&nbsp;&raquo;</b> de la commande pour générer les lignes du mois.
+                    <b>&laquo;&nbsp;Import Napta&nbsp;&raquo;</b> de la mission pour générer les lignes du mois.
                 </div>
             </template>
 

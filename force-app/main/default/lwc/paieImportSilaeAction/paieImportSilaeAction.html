@@ -1,0 +1,22 @@
+<template>
+    <div class="slds-p-around_medium slds-is-relative">
+        <template if:true={loading}>
+            <lightning-spinner alternative-text="Import en cours" size="small"></lightning-spinner>
+        </template>
+        <p class="slds-m-bottom_small slds-text-body_regular">
+            Sélectionne le mois à importer depuis Silae. Le nombre de bulletins est simulé.
+        </p>
+        <lightning-combobox
+            label="Mois à importer"
+            value={selectedMonth}
+            options={monthOptions}
+            onchange={handleChange}
+            variant="label-stacked">
+        </lightning-combobox>
+        <div class="slds-grid slds-grid_align-end slds-m-top_medium">
+            <lightning-button label="Annuler" onclick={close} class="slds-m-right_x-small"></lightning-button>
+            <lightning-button variant="brand" label="Importer" icon-name="utility:download"
+                onclick={handleImport} disabled={loading}></lightning-button>
+        </div>
+    </div>
+</template>

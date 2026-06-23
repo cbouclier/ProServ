@@ -12,7 +12,21 @@ public with sharing class RegieBillingController {
     @TestVisible private static final String CTX_DEF  = 'RLM_BillingContext';
     @TestVisible private static final String READ_MAP = 'OrderEntitiesMapping';
     @TestVisible private static final String SAVE_MAP = 'BSGEntitiesMapping';
-    @TestVisible private static final Id REGIE_TREATMENT = '1BTWs0000004ik1OAA'; // Régie Mensuelle (Arrears)
+
+    // Résolution dynamique du Billing Treatment (portable entre orgs)
+    @TestVisible private static Id regieTreatmentId;
+    private static Id getRegieTreatmentId() {
+        if (regieTreatmentId == null) {
+            List<BillingTreatment> bt = [
+                SELECT Id FROM BillingTreatment
+                WHERE Name = 'Régie Mensuelle (Arrears)' LIMIT 1];
+            if (bt.isEmpty())
+                throw new AuraHandledException(
+                    'Billing Treatment "Régie Mensuelle (Arrears)" introuvable — vérifiez la configuration Revenue Cloud.');
+            regieTreatmentId = bt[0].Id;
+        }
+        return regieTreatmentId;
+    }
 
     // ---------- DTOs ----------
     public class Line {
@@ -342,7 +356,7 @@ public with sharing class RegieBillingController {
                 Quantity = q, UnitPrice = tjm, NetUnitPrice = tjm,
                 TotalLineAmount = amt, NetTotalPrice = amt,
                 ServiceDate = m,   // période du BS = le mois courant (sinon il garde l'ancien mois)
-                BillingTreatmentId = REGIE_TREATMENT, BillingFrequency2 = 'Monthly'));
+                BillingTreatmentId = getRegieTreatmentId(), BillingFrequency2 = 'Monthly'));
         }
         if (!ois.isEmpty()) {
             try { update ois; }

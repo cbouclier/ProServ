@@ -124,6 +124,11 @@
                                 Forfait · réalisation des jalons et facturation au jalon
                             </p>
                         </template>
+                        <template if:true={modalIsUsage}>
+                            <p class="slds-m-top_xx-small slds-text-body_small slds-text-color_weak">
+                                Usage · import Silae des bulletins, validation et facturation mensuelle
+                            </p>
+                        </template>
                     </div>
                     <lightning-button-icon icon-name="utility:close" variant="border-filled"
                         size="medium" onclick={closeModal} alternative-text="Fermer" title="Fermer">
@@ -135,6 +140,9 @@
                     </template>
                     <template if:true={modalIsForfait}>
                         <c-milestone-billing-cockpit record-id={modalOrderId}></c-milestone-billing-cockpit>
+                    </template>
+                    <template if:true={modalIsUsage}>
+                        <c-paie-billing-cockpit record-id={modalOrderId}></c-paie-billing-cockpit>
                     </template>
                 </div>
                 <footer class="slds-modal__footer">

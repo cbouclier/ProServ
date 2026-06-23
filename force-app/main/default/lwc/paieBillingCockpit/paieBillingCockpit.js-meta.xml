@@ -2,8 +2,8 @@
 <LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
     <apiVersion>64.0</apiVersion>
     <isExposed>true</isExposed>
-    <masterLabel>Cockpit Facturation Forfait (Jalons)</masterLabel>
-    <description>Affiche le plan de facturation au jalon d'une mission Forfait (étape, %, montant, statut) et permet de réaliser les jalons.</description>
+    <masterLabel>Cockpit Facturation Paie</masterLabel>
+    <description>Facturation des missions Paie/Usage : import Silae mensuel, validation et facturation (BS one-shot).</description>
     <targets>
         <target>lightning__RecordPage</target>
     </targets>

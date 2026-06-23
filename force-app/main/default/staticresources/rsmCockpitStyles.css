@@ -1,0 +1,9 @@
+/* Cellules éditables des datatables du cockpit régie : repérables au premier coup d'œil */
+td:has(.rsm-edit) {
+    background-color: #eaf3ff;
+    box-shadow: inset 3px 0 0 0 #1b96ff;
+    cursor: pointer;
+}
+td:has(.rsm-edit):hover {
+    background-color: #d8e9fd;
+}

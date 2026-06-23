@@ -3,7 +3,7 @@
     <apiVersion>64.0</apiVersion>
     <isExposed>true</isExposed>
     <masterLabel>Facturer le jalon (Forfait)</masterLabel>
-    <description>Quick action : facture et poste le jalon réalisé (échéances Ready for Invoicing) de la commande Forfait.</description>
+    <description>Quick action : facture et poste le jalon réalisé (échéances Ready for Invoicing) de la mission Forfait.</description>
     <targets>
         <target>lightning__RecordAction</target>
     </targets>

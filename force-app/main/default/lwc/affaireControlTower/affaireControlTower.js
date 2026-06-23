@@ -6,12 +6,15 @@ import LightningConfirm from 'lightning/confirm';
 import getPilotage from '@salesforce/apex/AffaireControlTowerController.getPilotage';
 import genererFAE from '@salesforce/apex/AffaireControlTowerController.genererFAE';
 import linkFAE from '@salesforce/apex/AffaireControlTowerController.linkFAE';
+import setCoutReel from '@salesforce/apex/AffaireControlTowerController.setCoutReel';
 
 export default class AffaireControlTower extends LightningElement {
     @api recordId;
     p;
     loading = false;
     wiredResult;
+    editingCost = false;
+    costInput;
 
     @wire(getPilotage, { orderId: '$recordId' })
     wired(result) {
@@ -22,6 +25,14 @@ export default class AffaireControlTower extends LightningElement {
 
     // ---- Modèle ----
     get isForfait() { return this.p && this.p.model === 'Forfait'; }
+    get isUsage() { return this.p && this.p.isUsage; }
+    get unite() { return this.isUsage ? 'bull.' : 'j'; }
+    get gaugeSubLabel() {
+        if (!this.p) return '';
+        return this.isUsage
+            ? `${this.p.tauxConsommation}% du contrat écoulé (${this.p.moisImportes}/${this.p.nbMois} mois)`
+            : `${this.p.tauxConsommation}% du budget jours consommé`;
+    }
 
     // ---- Hero / Boni-Mali ----
     get isBoni() { return this.p && this.p.boniMaliStatut === 'Boni'; }
@@ -73,6 +84,33 @@ export default class AffaireControlTower extends LightningElement {
 
     // ---- Coût saisi (forfait) ----
     get coutReelSaisi() { return this.p && this.p.coutReelSaisi; }
+    // Coût réel manquant : forfait sans temps réel ni saisie -> rentabilité non calculable
+    get coutReelManquant() {
+        return this.isForfait && this.p && this.p.joursReelsEstimes && !this.p.coutReelSaisi;
+    }
+    get showCostInput() { return this.editingCost || this.coutReelManquant; }
+    get canEditCost() { return this.isForfait && !this.showCostInput; }
+
+    handleEditCost() {
+        this.costInput = this.p ? this.p.coutReel : 0;
+        this.editingCost = true;
+    }
+    handleCancelCost() { this.editingCost = false; }
+    handleCostChange(e) { this.costInput = e.detail.value; }
+    async saveCost() {
+        if (this.costInput === undefined || this.costInput === null || this.costInput === '') return;
+        this.loading = true;
+        try {
+            await setCoutReel({ orderId: this.recordId, montant: Number(this.costInput) });
+            this.editingCost = false;
+            this.toast('Coût réel enregistré', 'La rentabilité a été recalculée.', 'success');
+            await refreshApex(this.wiredResult);
+        } catch (err) {
+            this.toast('Erreur', this.msg(err), 'error');
+        } finally {
+            this.loading = false;
+        }
+    }
 
     // ---- FAE ----
     get hasFae() { return this.p && this.p.fae > 0; }

@@ -1,0 +1,53 @@
+<template>
+    <div class="slds-card slds-p-around_medium slds-is-relative">
+        <template if:true={loading}>
+            <lightning-spinner alternative-text="Traitement en cours" size="medium"></lightning-spinner>
+        </template>
+
+        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+            <lightning-icon icon-name="standard:partner_fund_claim" size="small" class="slds-m-right_x-small"></lightning-icon>
+            <h2 class="slds-text-heading_small slds-col">Facturation Paie (bulletins)</h2>
+            <div class="slds-text-body_small slds-text-color_weak slds-m-right_medium">
+                À facturer
+                <lightning-formatted-number value={totalAFacturer} format-style="currency"
+                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+                · Facturé
+                <lightning-formatted-number value={totalFacture} format-style="currency"
+                    currency-code="EUR" maximum-fraction-digits="0"></lightning-formatted-number>
+            </div>
+            <lightning-button-icon icon-name="utility:refresh" alternative-text="Rafraîchir"
+                title="Rafraîchir" onclick={refresh}></lightning-button-icon>
+        </div>
+
+        <!-- Barre d'import Silae (mois au choix, directement dans le cockpit) -->
+        <div class="slds-grid slds-grid_vertical-align-end slds-gutters_x-small slds-m-bottom_small">
+            <div class="slds-col slds-grow-none" style="min-width:12rem;">
+                <lightning-combobox label="Mois à importer (Silae)" value={importMonth}
+                    options={importMonthOptions} onchange={handleImportMonth}
+                    variant="label-stacked"></lightning-combobox>
+            </div>
+            <div class="slds-col slds-grow-none">
+                <lightning-button label="Importer le mois" variant="brand" icon-name="utility:download"
+                    onclick={handleImport} disabled={loading}></lightning-button>
+            </div>
+        </div>
+
+        <template if:true={hasMonths}>
+            <lightning-datatable
+                key-field="planId"
+                data={months}
+                columns={columns}
+                draft-values={draftValues}
+                onsave={handleSave}
+                onrowaction={handleRowAction}
+                hide-checkbox-column
+                column-widths-mode="auto">
+            </lightning-datatable>
+        </template>
+        <template if:false={hasMonths}>
+            <div class="slds-box slds-box_x-small slds-text-align_center slds-text-color_weak slds-m-top_small">
+                Aucun import Silae pour cette mission. Clique sur <b>« 📥 Simuler Import Silae »</b> pour importer un mois.
+            </div>
+        </template>
+    </div>
+</template>

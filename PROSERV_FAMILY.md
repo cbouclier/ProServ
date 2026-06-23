@@ -1,19 +1,20 @@
 # Famille ProServ — Architecture & Processus de Facturation
 
-Documentation complète de la solution ProServ RSM : composants, modèles de facturation et simulation Napta.
+Documentation complète de la solution ProServ RSM : composants, modèles de facturation, simulation Napta et simulation Silae.
 
 ---
 
 ## Vue d'ensemble
 
-La solution ProServ gère le cycle de vie complet d'une **mission de conseil** dans Salesforce, de la commande jusqu'à la facture. Elle s'appuie sur Revenue Cloud Billing (RLM) pour la génération des factures et sur **Napta** comme outil de staffing.
+La solution ProServ gère le cycle de vie complet d'une **mission de conseil** dans Salesforce, de la commande jusqu'à la facture. Elle s'appuie sur Revenue Cloud Billing (RLM) pour la génération des factures.
 
-Chaque mission est un **Order** Salesforce. Deux modèles de facturation coexistent, déterminés par le champ `RSM_BillingModel__c` sur l'Order :
+Chaque mission est un **Order** Salesforce. **Trois modèles de facturation** coexistent, déterminés par le champ `RSM_BillingModel__c` sur l'Order :
 
-| Modèle | Principe | Outil de référence |
-|--------|----------|--------------------|
-| **Régie** | Facturation au temps passé (T&M), mois par mois | Napta (saisie des heures) |
-| **Forfait** | Facturation par jalons séquentiels | Avancement du projet |
+| Modèle | Principe | Outil de référence | Objet plan |
+|--------|----------|--------------------|------------|
+| **Régie** | Facturation au temps passé (T&M), mois par mois | Napta (saisie des heures) | `RegieBillingPlan__c` |
+| **Forfait** | Facturation par jalons séquentiels | Avancement du projet | `BillingMilestonePlanItem` |
+| **Paie** | Facturation au nombre de bulletins de salaire, mois par mois | Silae (logiciel de paie) | `RSM_PaieBillingPlan__c` |
 
 ---
 
@@ -52,6 +53,15 @@ Filtres disponibles : par mois, par modèle (Régie/Forfait), et toggle pour n'a
 ### regieRefreshPublisher
 **Synchroniseur invisible.** Publie un signal de rafraîchissement sur la page après un Import Napta, pour que le cockpit régie se recharge automatiquement sans action de l'utilisateur.
 
+### paieBillingCockpit
+**Cockpit de facturation Paie.** Même architecture que le cockpit Régie, mais la facturation est basée sur un nombre de **bulletins de salaire** × prix unitaire. Intègre directement une barre d'import Silae avec sélection du mois. Permet d'éditer le nombre de bulletins en ligne, de valider et de facturer. Se rafraîchit automatiquement après un import Silae.
+
+### paieBillingStatus
+**Widget de suivi de facturation Paie.** Affiche 3 indicateurs (Total Paie, À facturer, Facturé) et un tableau mensuel récapitulatif avec le nombre de bulletins, le prix unitaire, le montant et le statut de chaque mois.
+
+### paieImportSilaeAction
+**Quick Action d'import Silae.** Bouton sur l'Order qui ouvre une fenêtre modale permettant de choisir le mois à importer. Déclenche la simulation Silae et publie un signal de rafraîchissement au cockpit Paie.
+
 ---
 
 ## Modèle Régie — Processus détaillé
@@ -59,12 +69,13 @@ Filtres disponibles : par mois, par modèle (Régie/Forfait), et toggle pour n'a
 ### Schéma du processus
 
 ```
-[1] Import Napta          [2] Édition & Validation       [3] Facturation
-─────────────────         ──────────────────────────     ──────────────────
-Génère les lignes    →    Vérifie / corrige          →   Crée et poste
-du mois dans              jours, TJM, frais               la facture RLM
-RegieBillingPlan__c       puis valide                     via ConnectApi
-(statut Brouillon)        → crée les BillingSchedules
+[Activation Order]   [1] Import Napta          [2] Édition & Validation       [3] Facturation
+──────────────────   ─────────────────         ──────────────────────────     ──────────────────
+RLM crée des    →    Génère les lignes    →    Vérifie / corrige          →   Crée et poste
+BS Evergreen         du mois dans              jours, TJM, frais               la facture RLM
+(supprimés à         RegieBillingPlan__c       puis valide                     via ConnectApi
+chaque validation)   (statut Brouillon)        → supprime les BS Evergreen
+                                               → recrée les BS du mois
 ```
 
 ### Étape 1 — Import Napta
@@ -94,7 +105,7 @@ Dans le **regieBillingCockpit**, le gestionnaire vérifie les lignes importées,
 1. `prepareMonth()` — synchronise les OrderItems avec les valeurs validées, passe les lignes en statut **Validé**
 2. `createSchedules()` — appelle l'API Revenue Cloud pour créer les **Billing Schedules** (échéanciers)
 
-> **Note technique :** La régie facture des montants variables chaque mois (≠ abonnement fixe). Le code supprime les anciens Billing Schedules de l'Order avant d'en créer de nouveaux, puis restaure les valeurs contractuelles d'origine sur les OrderItems.
+> **Comportement à l'activation de la commande :** Dès qu'un Order est activé, Revenue Cloud crée automatiquement des `BillingSchedule` de type **Evergreen** (récurrents, montant fixe) à partir du Billing Treatment des OrderItems. Pour la régie, ces BS sont inutilisables tels quels car le montant varie chaque mois. Le code les **supprime intégralement** à chaque validation mensuelle et en recrée de nouveaux avec le montant exact du mois (jours réels × TJM). Les mois déjà facturés restent tracés par leurs Invoices, qui sont permanentes.
 
 ### Étape 3 — Facturation
 
@@ -113,12 +124,15 @@ Dans les deux cas : `ConnectApi.Billing.generateInvoices` crée et poste la fact
 ### Schéma du processus
 
 ```
-[Activation Order]        [Réalisation jalon]            [Facturation jalon]
-──────────────────        ───────────────────            ───────────────────
-RLM génère les       →    Le gestionnaire            →   Crée et poste
-BillingMilestonePlan      marque le jalon                la facture RLM
-Items automatiquement     comme réalisé                  (séquentiel)
+[Activation Order]             [Réalisation jalon]            [Facturation jalon]
+──────────────────             ───────────────────            ───────────────────
+RLM génère les BS         →    Le gestionnaire            →   Crée et poste
++ BillingMilestonePlan         marque le jalon                la facture RLM
+Items automatiquement          comme réalisé                  (séquentiel)
+(conservés tels quels)
 ```
+
+> **Comportement à l'activation de la commande :** Pour le modèle Forfait, l'activation de l'Order déclenche la création automatique par Revenue Cloud des `BillingSchedule` et des `BillingMilestonePlanItem` à partir du Billing Treatment. Ces enregistrements sont conservés tels quels et utilisés directement par le cockpit — aucune suppression ni recréation.
 
 ### Règle de séquentialité
 
@@ -131,6 +145,55 @@ Le bouton "Réaliser" dans le **milestoneBillingCockpit** passe `IsMilestoneAcco
 ### Facturation
 
 `MilestoneBillingController.invoiceMilestone` — crée et poste la facture de toutes les échéances `ReadyForInvoicing` de l'Order.
+
+---
+
+## Modèle Paie — Processus détaillé
+
+### Principe
+
+Le modèle Paie (dit "Usage / Social") facture les missions de **gestion de la paie** : chaque mois, le nombre de bulletins de salaire traités est multiplié par un prix unitaire pour calculer le montant à facturer. Il utilise **Silae** comme logiciel source des données de paie.
+
+C'est une variante simplifiée du modèle Régie — une seule ligne "Bulletin de paie" par mois au lieu de plusieurs grades — avec le même pipeline technique RLM.
+
+### Schéma du processus
+
+```
+[Activation Order]   [1] Import Silae          [2] Validation                 [3] Facturation
+──────────────────   ─────────────────         ──────────────────────────     ──────────────────
+RLM crée des    →    Génère 1 ligne        →    Vérifie / corrige          →   Crée et poste
+BS Evergreen         par mois dans              nb bulletins                   la facture RLM
+(supprimés à         RSM_PaieBillingPlan__c     puis valide                    via ConnectApi
+chaque validation)   (statut Brouillon)         → supprime les BS Evergreen
+                                                → recrée les BS du mois
+```
+
+### Étape 1 — Import Silae (simulation)
+
+Le bouton **"Import Silae"** (dans le cockpit ou via Quick Action) sélectionne la ligne produit "Bulletin de paie" de l'Order et crée un enregistrement `RSM_PaieBillingPlan__c` pour le mois choisi, en statut **Brouillon**.
+
+**En production**, Silae enverrait le vrai nombre de bulletins traités dans le mois.
+
+**En démo (simulation)**, le code (`PaieBillingController.simulerImportSilae`) génère un nombre fictif de bulletins :
+
+| Donnée | Valeur simulée |
+|--------|----------------|
+| Nombre de bulletins | Entre 40 et 60 (aléatoire) |
+| Prix unitaire | Prix réel de la ligne produit (défaut : 12€) |
+| Statut initial | Brouillon |
+| Source | Silae (tracé dans `Source__c`) |
+
+> Si aucun mois n'est précisé, l'import cible automatiquement le mois suivant le dernier importé, ou le mois de démarrage de la mission si aucun import n'existe encore. L'import est idempotent via `ExternalKey__c = OrderId-YYYY-MM`.
+
+### Étape 2 — Validation
+
+Même mécanique que la Régie : `prepareMonth()` met à jour l'OrderItem avec le nombre de bulletins et le prix du mois, supprime les BS Evergreen existants et passe le plan en **Validé**. Puis `createSchedules()` recrée les Billing Schedules via l'API RLM.
+
+> La mission doit être **Activée** avant de pouvoir valider un mois — le code vérifie explicitement `Order.Status = 'Activated'`.
+
+### Étape 3 — Facturation
+
+Identique à la Régie : facturation mois par mois (`createAndPostInvoice`) ou globale pour tous les mois validés (`invoiceOrder`). Date de facturation : 1er du mois suivant (arrears).
 
 ---
 
@@ -165,13 +228,31 @@ Deux états possibles :
 
 ---
 
+## Lightning Pages
+
+### Cockpit_Facturation_Global (App Page)
+
+Page de type **App Page** accessible depuis la navigation de l'application. Elle affiche uniquement le composant `cockpitFacturationGlobal` qui prend toute la surface de la page.
+
+**Ce que l'utilisateur voit :**
+
+- **3 indicateurs KPI** en haut : total à facturer, total facturé, et nombre de missions avec du staffing Napta à valider
+- **Sélecteur de mois** pour naviguer et voir les missions du mois choisi
+- **Toggle filtre** "Afficher uniquement les missions avec staffing Napta à valider"
+- **Tableau des missions** avec les colonnes : N° Order, Client, Modèle (Régie / Forfait / Paie), Staffing Napta à valider, Montant HT, Statut (À traiter / Validé / Facturé)
+
+Les missions avec du staffing Napta non validé remontent automatiquement en tête de liste. C'est le **point d'entrée central** pour les gestionnaires qui pilotent la facturation de l'ensemble des missions du mois.
+
+---
+
 ## Objets Salesforce impliqués
 
 | Objet | Rôle dans la solution |
 |-------|-----------------------|
 | `Order` | La mission / affaire ProServ |
 | `OrderItem` | Les grades et frais contractuels |
-| `RegieBillingPlan__c` | Les lignes mensuelles régie (source de vérité du cockpit) |
+| `RegieBillingPlan__c` | Les lignes mensuelles régie (grades + frais) |
+| `RSM_PaieBillingPlan__c` | Les lignes mensuelles paie (bulletins de salaire) |
 | `RSM_RankCost__c` | Le coût journalier par grade (pour le calcul de rentabilité) |
 | `BillingMilestonePlanItem` | Les jalons du modèle Forfait |
 | `BillingSchedule` | Les échéanciers Revenue Cloud générés à la validation |
@@ -185,10 +266,62 @@ Deux états possibles :
 |--------|------|
 | `RegieBillingController` | Import Napta, édition, validation, facturation régie |
 | `MilestoneBillingController` | Réalisation et facturation des jalons |
+| `PaieBillingController` | Import Silae, édition, validation, facturation paie |
 | `AffaireControlTowerController` | Calcul du pilotage 360° et du Boni/Mali |
 | `GlobalBillingController` | Agrégation des missions pour le cockpit global |
 
 ---
 
+## Portabilité — Modifications pour déploiement multi-org
+
+### IDs hardcodés supprimés
+
+Les classes `RegieBillingController` et `PaieBillingController` contenaient des IDs d'enregistrements Salesforce spécifiques à l'org RSM, qui auraient cassé tout déploiement sur une autre org :
+
+| ID supprimé | Valeur originale | Rôle |
+|-------------|-----------------|------|
+| `REGIE_TREATMENT` | `1BTWs0000004ik1OAA` | ID du Billing Treatment "Régie Mensuelle (Arrears)" |
+| `BULLETIN_PRODUCT` | `01tWs00000EdlqXIAR` | ID du produit "Bulletin de paie" |
+
+### Solution appliquée
+
+**`REGIE_TREATMENT`** (dans les deux classes) — remplacé par un getter `getRegieTreatmentId()` qui interroge dynamiquement l'org cible :
+```apex
+SELECT Id FROM BillingTreatment WHERE Name = 'Régie Mensuelle (Arrears)' LIMIT 1
+```
+Le résultat est mis en cache statique pour éviter des requêtes répétées. Si le Treatment n'existe pas sur l'org, une erreur explicite s'affiche.
+
+**`BULLETIN_PRODUCT`** (dans `PaieBillingController`) — supprimé. La recherche du produit "Bulletin de paie" repose désormais uniquement sur le pattern de nom :
+```apex
+Product2.Name LIKE 'Bulletin%paie%'
+```
+
+### Prérequis sur l'org cible
+
+Pour que les composants fonctionnent sur une nouvelle org, celle-ci doit disposer de :
+- Revenue Cloud Billing activé
+- Un Billing Treatment nommé exactement **"Régie Mensuelle (Arrears)"**
+- Un produit dont le nom contient **"Bulletin"** et **"paie"** (ex : "Bulletin de paie")
+- Le Billing Context `RLM_BillingContext` avec ses mappings `OrderEntitiesMapping` et `BSGEntitiesMapping`
+
+---
+
+## Déploiement sur une nouvelle org
+
+Un script de déploiement est disponible à la racine du projet. Il déploie tous les composants en 4 étapes ordonnées (objets → Apex → LWC → pages).
+
+```bash
+cd /Users/cbouclier/VSCode/ProServ && ./deploy.sh <alias-org>
+```
+
+Exemple :
+```bash
+./deploy.sh my-sandbox
+./deploy.sh user@company.com
+```
+
+Voir [deploy.sh](deploy.sh) pour le détail des étapes et les vérifications post-déploiement.
+
+---
+
 → Voir [COMPOSANTS_LWC.md](COMPOSANTS_LWC.md) pour la description de tous les composants du projet.
-→ Voir [FACTURATION_REGIE.md](FACTURATION_REGIE.md) pour le détail technique de la facturation régie.
